@@ -1,0 +1,21 @@
+SEMANTIC_SCHEMA = {
+    "date": None,
+    "fmn": None,
+    "aor_lower_fmn": None,
+    "unit": None,
+    "agency": None,
+    "country": None,
+    "state": None,
+    "district": None,
+    "gen_area": None,
+    "gp": None,
+    "heading": None,
+    "input_summary": None,
+    "coordinates": None,
+    "engagement_type_reasoned": None,
+    "cadres_min": None,
+    "cadres_max": None,
+    "leader": None,
+    "weapons": None,
+    "ammunition": None
+}

@@ -1,0 +1,8 @@
+flask
+pdfplumber
+pymupdf
+markdownify
+pandas
+openpyxl
+requests
+beautifulsoup4

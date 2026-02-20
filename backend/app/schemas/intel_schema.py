@@ -1,0 +1,21 @@
+EXCEL_COLUMNS = [
+    "Date",
+    "FMN",
+    "AOR (LOWER FMN)",
+    "Unit",
+    "AGENCY",
+    "COUNTRY",
+    "STATE",
+    "DIST",
+    "GEN A",
+    "GP",
+    "Heading",
+    "Input",
+    "Coordinates",
+    "Defection To/ Firefight/ IFC With",
+    "No of Cadres (Min)",
+    "No of Cadres (Max)",
+    "Ldr",
+    "Wpns",
+    "Amn"
+]
