@@ -16,7 +16,6 @@ from app.utils.logger import log
 upload_bp = Blueprint("upload", __name__)
 
 
-# ---------------- UNIVERSAL DATE EXTRACTION ----------------
 def extract_date(text):
     if not text:
         return None
@@ -47,7 +46,6 @@ def upload():
 
         log("UPLOAD", file.filename)
 
-        # ---------------- MODE DETECTION ----------------
         rows_data = extract_table_rows(pdf_path)
 
         if rows_data and len(rows_data[0]) >= 4:
@@ -69,11 +67,8 @@ def upload():
                 return ""
             return str(value).replace("\n", " ").strip()
 
-        # ---------------- PROCESS RECORDS ----------------
         for idx, row in enumerate(source_rows, start=1):
             try:
-
-                # ================= TABLE MODE =================
                 if mode == "TABLE":
                     input_text = safe_cell(row[8]) if len(row) > 8 else ""
                     agency = safe_cell(row[2]) if len(row) > 2 else None
@@ -81,12 +76,9 @@ def upload():
                     date = extract_date(input_text)
                     aor = None
                     unit = None
-
-                # ================= NARRATIVE MODE =================
                 else:
                     input_text = re.sub(r'\s+', ' ', row).strip()
 
-                    # Detect faction header
                     if re.fullmatch(r'[A-Z]{3,6}', input_text):
                         current_faction = input_text
                         continue
@@ -113,7 +105,6 @@ def upload():
                             if "Unit" in part:
                                 unit = part.replace("Unit", "").strip()
 
-                # ---------------- BASE DATA ----------------
                 data = {
                     "date": date,
                     "gp": gp if gp else None,
@@ -126,26 +117,17 @@ def upload():
                     "coordinates": None
                 }
 
-                # ---------------- DETERMINISTIC EXTRACTION ----------------
                 data = apply_mapping(data, input_text)
 
-                # ---------------- HEADING EXTRACTION ----------------
-                # Remove numbering like "1. "
                 clean_text = re.sub(r'^\s*\d+\.\s*', '', input_text)
-
                 heading_match = re.match(r'^([^\.]+)\.', clean_text)
 
                 if heading_match:
                     data["heading"] = heading_match.group(1).strip()
 
-                # ---------------- LLM EXTRACTION ----------------
-                try:
-                    llm_data = extract_semantic_fields(input_text)
-                except Exception as e:
-                    log("LLM", f"LLM failed → {e}")
-                    llm_data = {}
+                # Direct LLM call (no redundant try/except)
+                llm_data = extract_semantic_fields(input_text)
 
-                # ---------------- CLEAN BODY FOR SUMMARY ----------------
                 clean_body = re.sub(r'^\s*\d+\.\s*', '', input_text)
                 clean_body = re.sub(r'^[^\.]+\.\s*', '', clean_body)
 
@@ -154,18 +136,15 @@ def upload():
                 if summary and len(summary.strip()) > 20:
                     data["input_summary"] = summary.strip()
                 else:
-                    # fallback summary = first 3 sentences AFTER heading
                     sentences = re.split(r'(?<=\.)\s+', clean_body)
                     data["input_summary"] = " ".join(sentences[:3]).strip()
 
-                # Final safety fallback for heading
                 if not data.get("heading") and clean_body:
                     data["heading"] = clean_body.split(".")[0][:120].strip()
 
-                # ---------------- FINAL APPEND ----------------
                 rows.append({
                     "Date": data.get("date"),
-                    "FMN": None,  # Always empty
+                    "FMN": None,
                     "AOR (LOWER FMN)": aor,
                     "Unit": unit,
                     "AGENCY": agency,
@@ -177,17 +156,11 @@ def upload():
                     "Heading": data.get("heading"),
                     "Input": data.get("input_summary"),
                     "Coordinates": data.get("coordinates"),
-                    "Defection To/ Firefight/ IFC With": data.get("engagement_type_reasoned"),
-                    "No of Cadres (Min)": data.get("cadres_min"),
-                    "No of Cadres (Max)": data.get("cadres_max"),
-                    "Ldr": data.get("leader"),
-                    "Wpns": data.get("weapons"),
-                    "Amn": data.get("ammunition")
                 })
 
             except Exception as e:
                 failed_records += 1
-                log("ERROR", f"Row {idx} failed: {e}")
+                log("ERROR", f"Row {idx} failed")
 
         log("VALIDATION", f"Records detected: {len(source_rows)}")
         log("VALIDATION", f"Rows processed: {len(rows)}")
@@ -202,10 +175,9 @@ def upload():
             "excel": final_excel
         }), 200
 
-    except Exception as e:
-        log("ERROR", f"Upload failed: {e}")
+    except Exception:
+        log("ERROR", "Upload failed")
         return jsonify({
             "status": "error",
-            "message": "File processing failed",
-            "details": str(e)
+            "message": "File processing failed"
         }), 500
