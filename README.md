@@ -46,7 +46,7 @@ project_Jetly/
 
 ```bash
 git clone https://github.com/aptsoftware-git/dataExtraction.git
-cd project_Jetly
+cd backend
 ```
 
 ### 2️⃣ Create Virtual Environment
