@@ -46,7 +46,7 @@ project_Jetly/
 
 ```bash
 git clone https://github.com/aptsoftware-git/dataExtraction.git
-cd project_Jetly
+cd backend
 ```
 
 ### 2️⃣ Create Virtual Environment
@@ -76,7 +76,7 @@ pip install -r requirements.txt
 ### 4️⃣ Run Backend
 
 ```bash
-python -m backend.run
+python run.py 
 ```
 
 Backend runs at:
