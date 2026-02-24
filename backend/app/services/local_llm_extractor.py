@@ -21,6 +21,7 @@ STRICT RULES:
 - No explanations.
 - No markdown.
 - No extra text.
+- The output JSON must match the schema keys exactly. Do not add or remove keys.
 
 FIELD DEFINITIONS:
 
@@ -112,7 +113,7 @@ Do not add any commentary.
         response = requests.post(
             OLLAMA_URL,
             json=payload,
-            timeout=120
+            timeout=180
         )
 
         if response.status_code != 200:
