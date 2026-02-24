@@ -1,8 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import os
 import re
 from datetime import datetime
+from typing import List
+from pydantic import BaseModel
 
 from app.services.pdf_extractor import (
     extract_table_rows,
@@ -187,12 +189,10 @@ async def upload(file: UploadFile = File(...)):
 
                 rows.append(data)
 
-        final_excel = write_excel(rows, pdf_path)
-        
+        # Store extracted data (no automatic Excel generation)
         response_data = {
             "status": "success",
             "records": len(rows),
-            "excel": final_excel,
             "data": rows
         }
         
@@ -206,4 +206,53 @@ async def upload(file: UploadFile = File(...)):
                 "status": "error",
                 "message": "Processing failed"
             }
+        )
+
+
+# =====================================================
+# EXPORT ENDPOINT
+# =====================================================
+
+class ExportRequest(BaseModel):
+    data: List[dict]
+    filename: str = "intelligence_data"
+
+
+@router.post("/export")
+async def export_to_excel(request: ExportRequest):
+    """
+    Export selected or all records to Excel file
+    """
+    try:
+        if not request.data or len(request.data) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail={"status": "error", "message": "No data to export"}
+            )
+        
+        log("EXPORT", f"Exporting {len(request.data)} records")
+        
+        # Generate temporary Excel file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        temp_filename = f"{request.filename}_{timestamp}.xlsx"
+        temp_path = f"output/{temp_filename}"
+        
+        # Use write_excel to generate the file
+        excel_path = write_excel(request.data, temp_path)
+        
+        # Return file for download
+        return FileResponse(
+            path=excel_path,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=temp_filename,
+            headers={"Content-Disposition": f"attachment; filename={temp_filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        log("EXPORT_ERROR", str(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"status": "error", "message": f"Export failed: {str(e)}"}
         )

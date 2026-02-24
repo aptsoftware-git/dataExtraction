@@ -27,10 +27,11 @@ body {
 
 /* Header Styles */
 .app-header {
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  color: white;
+  background: linear-gradient(to right, #f5f7fa 0%, #eceff1 100%);
+  color: #263238;
   padding: 12px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #cfd8dc;
 }
 
 .header-content {
@@ -47,21 +48,23 @@ body {
 }
 
 .app-logo {
-  height: 64px;
-  width: 64px;
+  height: 48px;
+  width: auto;
+  object-fit: contain;
 }
 
 .app-title {
   font-size: 28px;
   font-weight: 600;
   margin: 0;
+  color: #263238;
 }
 
 .app-subtitle {
   font-size: 14px;
-  opacity: 0.9;
   margin: 0;
-  padding-left: 80px;
+  padding-left: 64px;
+  color: #607d8b;
 }
 
 /* Main Content */
@@ -77,44 +80,65 @@ body {
 
 /* Footer Styles */
 .app-footer {
-  background-color: #263238;
-  color: rgba(255, 255, 255, 0.7);
+  background-color: rgb(238, 238, 238);
+  color: rgba(0, 0, 0, 0.87);
   padding: 24px 0;
   margin-top: auto;
+  border-top: 2px solid rgba(0, 0, 0, 0.12);
 }
 
 .footer-content {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 24px;
-  text-align: center;
+}
+
+.footer-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.footer-logo {
+  position: absolute;
+  left: 0;
+}
+
+.make-in-india-logo {
+  height: 50px;
+  width: auto;
 }
 
 .footer-info {
-  margin-bottom: 12px;
+  text-align: center;
 }
 
 .footer-text {
   font-size: 14px;
   margin: 0 0 4px 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 0, 0, 0.87);
+  font-weight: 600;
 }
 
 .footer-subtext {
   font-size: 12px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(0, 0, 0, 0.6);
 }
 
 .footer-copyright {
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  text-align: center;
 }
 
 .footer-copyright p {
   font-size: 12px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(0, 0, 0, 0.54);
 }
 
 /* Responsive Design */
@@ -137,5 +161,19 @@ body {
 
   .app-main {
     padding: 16px 8px;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer-logo {
+    position: static;
+  }
+
+  .make-in-india-logo {
+    height: 40px;
   }
 }

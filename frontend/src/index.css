@@ -318,6 +318,73 @@ body {
   background: #555;
 }
 
+/* Export Controls */
+.export-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: #f5f7fa;
+  border-bottom: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selection-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-text {
+  background: none;
+  color: #1976d2;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-text:hover:not(:disabled) {
+  background: rgba(25, 118, 210, 0.08);
+}
+
+.btn-text:disabled {
+  color: #bdbdbd;
+  cursor: not-allowed;
+}
+
+.btn-export {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.btn-export:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-export:disabled {
+  background: #94d3a2;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -412,7 +479,7 @@ body {
   min-width: 60px;
   max-width: 60px;
   position: sticky;
-  left: 0;
+  left: 50px;
   z-index: 15;
 }
 
@@ -422,6 +489,42 @@ body {
 
 .data-table tbody tr:hover .row-number {
   background-color: #e3f2fd;
+}
+
+/* Checkbox column */
+.row-checkbox {
+  width: 50px;
+  min-width: 50px;
+  max-width: 50px;
+  text-align: center !important;
+  background-color: #f5f5f5;
+  position: sticky;
+  left: 0;
+  z-index: 15;
+}
+
+.data-table thead th.row-checkbox {
+  z-index: 20;
+}
+
+.row-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #1976d2;
+}
+
+.data-table tbody tr:hover .row-checkbox {
+  background-color: #e3f2fd;
+}
+
+/* Selected row highlighting */
+.data-table tbody tr.selected-row {
+  background-color: #e3f2fd !important;
+}
+
+.data-table tbody tr.selected-row:hover {
+  background-color: #bbdefb !important;
 }
 
 /* Responsive Table */
@@ -487,5 +590,26 @@ body {
   .row-number {
     min-width: 50px;
     max-width: 50px;
+    left: 40px;
+  }
+
+  .row-checkbox {
+    min-width: 40px;
+    max-width: 40px;
+    left: 0;
+  }
+
+  .export-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .selection-buttons {
+    justify-content: center;
+  }
+
+  .btn-export {
+    width: 100%;
   }
 }

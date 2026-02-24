@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { uploadPDF } from "../services/api";
+import { uploadPDF, exportToExcel } from "../services/api";
 import DataTable from "./DataTable";
 
 function UploadPDF() {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
-  const [records, setRecords] = useState(null);
   const [fileName, setFileName] = useState("");
   const [extractedData, setExtractedData] = useState(null);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [exporting, setExporting] = useState(false);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -16,7 +17,6 @@ function UploadPDF() {
       setFile(selectedFile);
       setFileName(selectedFile.name);
       setStatus("");
-      setRecords(null);
     }
   };
 
@@ -24,10 +24,65 @@ function UploadPDF() {
     setFile(null);
     setFileName("");
     setStatus("");
-    setRecords(null);
     setExtractedData(null);
+    setSelectedRows([]);
     // Reset file input
     document.getElementById("pdf-upload").value = "";
+  };
+
+  const handleToggleRow = (index) => {
+    setSelectedRows(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  const handleToggleAll = (data) => {
+    if (selectedRows.length === data.length) {
+      setSelectedRows([]);
+    } else {
+      setSelectedRows(data.map((_, index) => index));
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (extractedData) {
+      setSelectedRows(extractedData.map((_, index) => index));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRows([]);
+  };
+
+  const handleExport = async () => {
+    if (!extractedData || extractedData.length === 0) {
+      setStatus("No data to export.");
+      return;
+    }
+
+    try {
+      setExporting(true);
+      
+      // Get selected data or all data
+      const dataToExport = selectedRows.length > 0
+        ? selectedRows.map(index => extractedData[index])
+        : extractedData;
+
+      // Extract original filename without extension
+      const baseFilename = fileName.replace(/\.[^/.]+$/, "") || "intelligence_data";
+      
+      await exportToExcel(dataToExport, baseFilename);
+      
+      // Clear selection after successful export
+      setSelectedRows([]);
+    } catch (err) {
+      console.error("Export error:", err);
+      setStatus(err.response?.data?.message || "Failed to export data. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -40,15 +95,13 @@ function UploadPDF() {
     formData.append("file", file);
 
     setLoading(true);
-    setRecords(null);
     setStatus("Processing intelligence report...");
 
     try {
       const res = await uploadPDF(formData);
 
       if (res.data.status === "success") {
-        setStatus("File processed successfully!");
-        setRecords(`${res.data.records} records extracted. Excel file saved as: ${res.data.excel}`);
+        setStatus("");
         setExtractedData(res.data.data || []);
       } else {
         setStatus(res.data.message || "Error processing PDF.");
@@ -84,22 +137,13 @@ function UploadPDF() {
               className={`alert ${
                 loading
                   ? "alert-info"
-                  : records
-                  ? "alert-success"
                   : "alert-error"
               }`}
             >
               <span className="alert-icon">
-                {loading ? "⏳" : records ? "✅" : "⚠️"}
+                {loading ? "⏳" : "⚠️"}
               </span>
               <span className="alert-message">{status}</span>
-            </div>
-          )}
-
-          {records && (
-            <div className="alert alert-success">
-              <span className="alert-icon">📄</span>
-              <span className="alert-message">{records}</span>
             </div>
           )}
 
@@ -169,7 +213,16 @@ function UploadPDF() {
 
       {/* Data Table - Outside form container for full width */}
       {extractedData && Array.isArray(extractedData) && extractedData.length > 0 && (
-        <DataTable data={extractedData} />
+        <DataTable 
+          data={extractedData}
+          selectedRows={selectedRows}
+          onToggleRow={handleToggleRow}
+          onToggleAll={handleToggleAll}
+          onSelectAll={handleSelectAll}
+          onDeselectAll={handleDeselectAll}
+          onExport={handleExport}
+          exporting={exporting}
+        />
       )}
     </>
   );
