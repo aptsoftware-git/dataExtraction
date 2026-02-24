@@ -188,12 +188,15 @@ async def upload(file: UploadFile = File(...)):
                 rows.append(data)
 
         final_excel = write_excel(rows, pdf_path)
-
-        return {
+        
+        response_data = {
             "status": "success",
             "records": len(rows),
-            "excel": final_excel
+            "excel": final_excel,
+            "data": rows
         }
+        
+        return JSONResponse(content=response_data)
 
     except Exception as e:
         log("ERROR", str(e))

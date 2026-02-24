@@ -9,7 +9,7 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <div className="logo-section">
-            <img src="/logo192.png" alt="Logo" className="app-logo" />
+            <img src="/intelligence-icon.svg" alt="Intelligence Data Extraction Logo" className="app-logo" />
             <h1 className="app-title">Intelligence Data Extraction System</h1>
           </div>
           <p className="app-subtitle">Automated PDF Intelligence Processing</p>
@@ -18,9 +18,7 @@ function App() {
 
       {/* Main Content */}
       <main className="app-main">
-        <div className="content-wrapper">
-          <UploadPDF />
-        </div>
+        <UploadPDF />
       </main>
 
       {/* Footer */}

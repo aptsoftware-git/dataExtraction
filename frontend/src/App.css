@@ -29,7 +29,7 @@ body {
 .app-header {
   background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
   color: white;
-  padding: 24px 0;
+  padding: 12px 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -43,12 +43,12 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .app-logo {
-  height: 48px;
-  width: 48px;
+  height: 64px;
+  width: 64px;
 }
 
 .app-title {
@@ -61,7 +61,7 @@ body {
   font-size: 14px;
   opacity: 0.9;
   margin: 0;
-  padding-left: 64px;
+  padding-left: 80px;
 }
 
 /* Main Content */
