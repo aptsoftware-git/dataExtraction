@@ -1,15 +1,14 @@
 from flask import Blueprint, request, jsonify
 import os
 import re
+from datetime import datetime
 
 from app.services.pdf_extractor import (
-    extract_table_rows,
     extract_text_from_pdf,
     split_narrative_blocks
 )
 
 from app.services.mapping_rules import apply_mapping
-from app.services.local_llm_extractor import extract_semantic_fields
 from app.services.excel_writer import write_excel
 from app.utils.logger import log
 
@@ -20,14 +19,12 @@ def extract_date(text):
     if not text:
         return None
 
-    patterns = [
-        r'\b\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4}\b',
-        r'\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b'
-    ]
-
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
+    match = re.search(r'\b\d{1,2}\s+[A-Za-z]{3}\s+\d{2}\b', text)
+    if match:
+        try:
+            dt = datetime.strptime(match.group(0), "%d %b %y")
+            return dt.strftime("%d-%b-%y")
+        except:
             return match.group(0)
 
     return None
@@ -46,128 +43,60 @@ def upload():
 
         log("UPLOAD", file.filename)
 
-        rows_data = extract_table_rows(pdf_path)
-
-        if rows_data and len(rows_data[0]) >= 4:
-            mode = "TABLE"
-            log("MODE", "Detected TABLE structured document")
-            source_rows = rows_data
-        else:
-            mode = "NARRATIVE"
-            log("MODE", "Detected NARRATIVE structured document")
-            full_text = extract_text_from_pdf(pdf_path)
-            source_rows = split_narrative_blocks(full_text)
+        full_text = extract_text_from_pdf(pdf_path)
+        blocks = split_narrative_blocks(full_text)
 
         rows = []
-        failed_records = 0
         current_faction = None
 
-        def safe_cell(value):
-            if value is None:
-                return ""
-            return str(value).replace("\n", " ").strip()
+        for idx, block in enumerate(blocks, start=1):
 
-        for idx, row in enumerate(source_rows, start=1):
-            try:
-                if mode == "TABLE":
-                    input_text = safe_cell(row[8]) if len(row) > 8 else ""
-                    agency = safe_cell(row[2]) if len(row) > 2 else None
-                    gp = safe_cell(row[3]) if len(row) > 3 else None
-                    date = extract_date(input_text)
-                    aor = None
-                    unit = None
-                else:
-                    input_text = re.sub(r'\s+', ' ', row).strip()
+            input_text = re.sub(r'\s+', ' ', block).strip()
 
-                    if re.fullmatch(r'[A-Z]{3,6}', input_text):
-                        current_faction = input_text
-                        continue
+            if re.fullmatch(r'[A-Z]{3,6}', input_text):
+                current_faction = input_text
+                continue
 
-                    gp = current_faction
-                    date = extract_date(input_text)
+            data = {
+                "date": extract_date(input_text),
+                "fmn": None,
+                "aor_lower_fmn": None,
+                "unit": None,
+                "agency": None,
+                "country": None,
+                "state": None,
+                "district": None,
+                "gen_area": None,
+                "gp": current_faction,
+                "heading": None,
+                "input_summary": None,
+                "coordinates": None,
+                "engagement_type_reasoned": None,
+                "cadres_min": None,
+                "cadres_max": None,
+                "leader": None,
+                "weapons": None,
+                "ammunition": None
+            }
 
-                    source_match = re.search(r'\(Source-\s*(.*?)\)', input_text)
+            data = apply_mapping(data, input_text)
 
-                    agency = None
-                    aor = None
-                    unit = None
+            clean_text = re.sub(r'^\s*\d+\.\s*', '', input_text)
+            heading_match = re.match(r'^([^\.]+)\.', clean_text)
 
-                    if source_match:
-                        source_text = source_match.group(1)
-                        parts = [p.strip() for p in source_text.split(",")]
+            if heading_match:
+                data["heading"] = heading_match.group(1).strip()
+            else:
+                data["heading"] = clean_text[:120]
 
-                        if len(parts) >= 1:
-                            agency = parts[0]
+            sentences = re.split(r'(?<=\.)\s+', clean_text)
+            data["input_summary"] = " ".join(sentences[:3]).strip()
 
-                        for part in parts:
-                            if "AOR" in part:
-                                aor = part.replace("AOR", "").strip()
-                            if "Unit" in part:
-                                unit = part.replace("Unit", "").strip()
+            rows.append(data)
 
-                data = {
-                    "date": date,
-                    "gp": gp if gp else None,
-                    "state": None,
-                    "district": None,
-                    "country": None,
-                    "gen_area": None,
-                    "heading": None,
-                    "input_summary": None,
-                    "coordinates": None
-                }
-
-                data = apply_mapping(data, input_text)
-
-                clean_text = re.sub(r'^\s*\d+\.\s*', '', input_text)
-                heading_match = re.match(r'^([^\.]+)\.', clean_text)
-
-                if heading_match:
-                    data["heading"] = heading_match.group(1).strip()
-
-                # Direct LLM call (no redundant try/except)
-                llm_data = extract_semantic_fields(input_text)
-
-                clean_body = re.sub(r'^\s*\d+\.\s*', '', input_text)
-                clean_body = re.sub(r'^[^\.]+\.\s*', '', clean_body)
-
-                summary = llm_data.get("input_summary")
-
-                if summary and len(summary.strip()) > 20:
-                    data["input_summary"] = summary.strip()
-                else:
-                    sentences = re.split(r'(?<=\.)\s+', clean_body)
-                    data["input_summary"] = " ".join(sentences[:3]).strip()
-
-                if not data.get("heading") and clean_body:
-                    data["heading"] = clean_body.split(".")[0][:120].strip()
-
-                rows.append({
-                    "Date": data.get("date"),
-                    "FMN": None,
-                    "AOR (LOWER FMN)": aor,
-                    "Unit": unit,
-                    "AGENCY": agency,
-                    "COUNTRY": data.get("country"),
-                    "STATE": data.get("state"),
-                    "DIST": data.get("district"),
-                    "GEN A": data.get("gen_area"),
-                    "GP": data.get("gp"),
-                    "Heading": data.get("heading"),
-                    "Input": data.get("input_summary"),
-                    "Coordinates": data.get("coordinates"),
-                })
-
-            except Exception as e:
-                failed_records += 1
-                log("ERROR", f"Row {idx} failed")
-
-        log("VALIDATION", f"Records detected: {len(source_rows)}")
-        log("VALIDATION", f"Rows processed: {len(rows)}")
+        log("INFO", f"Rows built: {len(rows)}")
 
         final_excel = write_excel(rows, pdf_path)
-
-        log("DONE", f"Pipeline complete | Success: {len(rows)} | Failed: {failed_records}")
 
         return jsonify({
             "status": "success",
@@ -175,8 +104,8 @@ def upload():
             "excel": final_excel
         }), 200
 
-    except Exception:
-        log("ERROR", "Upload failed")
+    except Exception as e:
+        log("ERROR", str(e))
         return jsonify({
             "status": "error",
             "message": "File processing failed"

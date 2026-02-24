@@ -24,13 +24,19 @@ function UploadPDF() {
       const res = await uploadPDF(formData);
 
       if (res.data.status === "success") {
-        setStatus("✅ Intelligence report processed successfully.");
-        setRecords(res.data.message);
+        setStatus("✅ File processed successfully.");
+        setRecords(`📁 Saved as: ${res.data.excel}`);
       } else {
-        setStatus("❌ Error processing PDF.");
+        setStatus(`❌ ${res.data.message || "Error processing PDF."}`);
       }
     } catch (err) {
-      setStatus("❌ Server error. Please try again.");
+      console.error("Upload error:", err);
+
+      if (err.response) {
+        setStatus(`❌ ${err.response.data.message || "Server error occurred."}`);
+      } else {
+        setStatus("❌ Network error. Check backend connection.");
+      }
     } finally {
       setLoading(false);
     }

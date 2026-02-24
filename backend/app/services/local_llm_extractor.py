@@ -8,47 +8,60 @@ from app.utils.logger import log
 SYSTEM_PROMPT = """
 You are a Defence Intelligence Structured Data Extraction Engine.
 
-Your task is to extract structured fields from intelligence report body text.
+Your task is to extract structured information from intelligence narrative text.
 
 STRICT RULES:
+
 - Do NOT hallucinate.
-- Do NOT infer missing data.
-- Do NOT assume unstated information.
-- If a field is not explicitly present, return null.
+- Do NOT infer missing information.
+- Do NOT rewrite facts.
+- Only extract what is explicitly stated.
+- If a field is not clearly present, return null.
 - Return ONLY valid JSON.
-- Do NOT include explanations.
-- Do NOT include markdown.
-- Output must strictly match the schema.
+- No explanations.
+- No markdown.
+- No extra text.
 
 FIELD DEFINITIONS:
 
 1. heading:
-   - The heading is the FIRST line or FIRST sentence of the report.
-   - It usually appears before the first period.
-   - Extract it exactly as written.
-   - Do NOT rewrite or summarize it.
-   - Do NOT invent a new title.
+   - Extract the first sentence or first titled line exactly as written.
+   - Do NOT summarize.
 
 2. input_summary:
-   - A concise factual summary of the remaining text (excluding heading).
-   - Maximum 3 lines.
+   - Provide a concise factual summary (max 3 lines).
+   - Exclude the heading.
    - Only include explicitly stated facts.
 
 3. gen_area:
    - Extract only if clearly mentioned.
 
 4. state:
-   - Extract only if explicitly written.
+   - Extract only if explicitly mentioned.
 
 5. district:
-   - Extract only if explicitly written.
+   - Extract only if explicitly mentioned.
 
 6. coordinates:
    - Extract only if exact numeric latitude/longitude appears.
    - Do NOT generate coordinates.
 
-If a field is missing, return null.
-Return strictly valid JSON only.
+OUTPUT FORMAT:
+
+Return strictly valid JSON with this structure:
+
+{
+  "heading": string or null,
+  "input_summary": string or null,
+  "gen_area": string or null,
+  "state": string or null,
+  "district": string or null,
+  "coordinates": string or null
+}
+
+If any field is not present, set it to null.
+
+Return JSON only.
 """
 
 # Log LLM failure only once
@@ -71,17 +84,18 @@ def extract_semantic_fields(body_text: str) -> dict:
         return schema
 
     user_prompt = f"""
-Extract the following fields.
+Extract structured fields strictly in JSON format.
 
 SCHEMA:
 {json.dumps(schema, indent=2)}
 
-BODY TEXT:
+TEXT:
 \"\"\"
 {body_text}
 \"\"\"
 
-Return strictly valid JSON.
+Return ONLY valid JSON.
+Do not add any commentary.
 """
 
     payload = {
@@ -98,7 +112,7 @@ Return strictly valid JSON.
         response = requests.post(
             OLLAMA_URL,
             json=payload,
-            timeout=30
+            timeout=120
         )
 
         if response.status_code != 200:
