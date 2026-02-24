@@ -1,127 +1,128 @@
 import re
 
-# =========================================================
-# CONSTANTS
-# =========================================================
+# =====================================================
+# COUNTRY / STATE
+# =====================================================
 
 STATE_TO_COUNTRY = {
     "Assam": "India",
     "Manipur": "India",
     "Nagaland": "India",
     "Arunachal Pradesh": "India",
-    "Uttarakhand": "India",
-    "Uttar Pradesh": "India",
-    "Madhya Pradesh": "India",
-    "Jammu And Kashmir": "India",
-    "West Bengal": "India",
-    "Chhattisgarh": "India"
+    "West Bengal": "India"
 }
 
 KNOWN_DISTRICTS = [
-    "Tinsukia", "Namsai", "Dimapur", "Chumukedima",
-    "Mon", "Longleng", "Tengnoupal", "Pherzawl",
-    "Noney", "Changlang", "KPI", "CCpur",
-    "Thoubal", "Imphal", "Langol"
+    "Tinsukia","Namsai","Dimapur","Chumukedima",
+    "Mon","Longleng","Tengnoupal","Pherzawl",
+    "Noney","Changlang","KPI","CCpur",
+    "Thoubal","Imphal","Langol"
 ]
 
-WEAPON_MAP = {
-    "rocket-propelled gren": "RPG",
-    "rpg": "RPG",
-    "gren": "GRENADE",
-    "grenade": "GRENADE",
-    "sa fire": "SA",
-    "ak-47": "AK-47",
-    "lmg": "LMG",
-    "ied": "IED",
-    "rifle": "RIFLE"
-}
+# =====================================================
+# HEADING + SUMMARY ENGINE
+# =====================================================
 
-EVENT_PRIORITY = [
-    ("standoff firing", "Standoff Firing"),
-    ("ablaze", "Ablaze/ Conflict"),
-    ("burn", "Ablaze/ Conflict"),
-    ("presence", "Presence of Cadres"),
-    ("infilt", "Infiltration"),
-    ("movement of cadres", "Movement of Cadres"),
-    ("mov of cadres", "Movement of Cadres"),
-    ("mov", "Movement of Cadres"),
-    ("meeting", "Meeting"),
-    ("mtg", "Meeting"),
-    ("plg", "Planning"),
-    ("planning", "Planning"),
-    ("attack", "Firefight"),
-    ("firing", "Firefight"),
-    ("rpg", "Firefight"),
-    ("grenade", "Firefight")
-]
+def extract_heading_and_summary(text):
 
-# =========================================================
-# SOURCE PARSING (AGENCY, AOR, UNIT)
-# =========================================================
+    # Remove numbering prefix (1. 2. 12. etc.)
+    clean = re.sub(r'^\s*\d+\.\s*', '', text).strip()
+
+    # Split into sentences
+    sentences = re.split(r'(?<=\.)\s+', clean)
+
+    if not sentences:
+        return None, clean[:300]
+
+    # Heading = first sentence without trailing dot
+    heading = sentences[0].strip()
+    if heading.endswith("."):
+        heading = heading[:-1]
+
+    # Summary = next 2–3 sentences
+    summary_sentences = sentences[1:4]
+
+    if summary_sentences:
+        summary = " ".join(summary_sentences).strip()
+    else:
+        summary = clean
+
+    # Limit size for Excel safety
+    summary = summary[:800]
+
+    return heading[:150], summary
+
+
+# =====================================================
+# SOURCE EXTRACTION
+# =====================================================
 
 def extract_source_fields(text):
+
     agency = None
     aor = None
     unit = None
 
-    source_match = re.search(r'\(Source-\s*(.*?)\)', text)
-    if source_match:
-        source_text = source_match.group(1)
+    match = re.search(r'\(Source-\s*(.*?)\)', text)
+    if not match:
+        return agency, aor, unit
 
-        parts = [p.strip() for p in source_text.split(",")]
+    parts = [p.strip() for p in match.group(1).split(",")]
 
-        if len(parts) > 0:
-            agency = parts[0]
-
-        for part in parts:
-            if "AOR" in part:
-                aor = part.strip()
-            if "Unit" in part:
-                unit = part.replace("Unit", "").strip()
+    for p in parts:
+        if "AOR" in p:
+            aor = p.strip()
+        elif "Unit" in p:
+            unit = p.replace("Unit","").strip()
+        else:
+            agency = p
 
     return agency, aor, unit
 
 
-# =========================================================
-# FMN DETECTION
-# =========================================================
+# =====================================================
+# FMN STRUCTURAL DETECTION
+# =====================================================
 
 def extract_fmn(text):
-    t = text.lower()
 
-    if "cob" in t:
+    if re.search(r'\bCOB\b', text):
         return "COB"
-    if "camp" in t:
+    if re.search(r'\bcamp\b', text, re.IGNORECASE):
         return "Camp"
-    if "unit" in t:
-        return "Unit"
-    if "post" in t:
+    if re.search(r'\bpost\b', text, re.IGNORECASE):
         return "Post"
+    if re.search(r'\bunit\b', text, re.IGNORECASE):
+        return "Unit"
 
     return None
 
 
-# =========================================================
-# GP EXTRACTION (MULTI DETECTION + PRIORITY)
-# =========================================================
+# =====================================================
+# GP CONTEXTUAL EXTRACTION
+# =====================================================
 
 def extract_gp(text):
-    matches = re.findall(r'\b[A-Z]{3,6}\b', text)
 
-    blacklist = {"AOR", "DIST", "UNIT", "GEN", "LOC"}
+    patterns = [
+        r'\b([A-Z]{3,6})\s+cadre',
+        r'cadres?\s+of\s+([A-Z]{3,6})',
+        r'\b([A-Z]{3,6})\s+COB',
+        r'\b([A-Z]{3,6})\s+camp',
+        r'\b([A-Z]{3,6})\s+is\s+plg'
+    ]
 
-    candidates = [m for m in matches if m not in blacklist]
+    for p in patterns:
+        match = re.search(p, text)
+        if match:
+            return match.group(1)
 
-    if not candidates:
-        return None
-
-    # Return most frequent candidate
-    return max(set(candidates), key=candidates.count)
+    return None
 
 
-# =========================================================
+# =====================================================
 # STATE & DISTRICT
-# =========================================================
+# =====================================================
 
 def extract_state(text):
     for state in STATE_TO_COUNTRY:
@@ -129,16 +130,12 @@ def extract_state(text):
             return state
     return None
 
-
 def extract_district(text):
-    districts_found = []
 
-    for d in KNOWN_DISTRICTS:
-        if d.lower() in text.lower():
-            districts_found.append(d)
+    found = [d for d in KNOWN_DISTRICTS if d.lower() in text.lower()]
 
-    if districts_found:
-        return " / ".join(sorted(set(districts_found)))
+    if found:
+        return " / ".join(sorted(set(found)))
 
     match = re.search(r'([A-Z][a-zA-Z]+)\s+(Dist|District)', text)
     if match:
@@ -147,150 +144,135 @@ def extract_district(text):
     return None
 
 
-# =========================================================
-# GENERAL AREA
-# =========================================================
-
-def extract_gen_area(text):
-    match = re.search(r'gen\s*A\s*([A-Za-z\s&]+)', text, re.IGNORECASE)
-    if match:
-        return match.group(1).strip()
-    return None
-
-
-# =========================================================
-# LEADER EXTRACTION (ENHANCED)
-# =========================================================
+# =====================================================
+# LEADER EXTRACTION
+# =====================================================
 
 def extract_leaders(text):
 
-    # 1️⃣ Led by (highest priority)
-    led_match = re.search(
-        r'led by\s+(?:a\s+)?(SS\s+(?:Lt|Maj|Capt|Col|Gen|Sgt(?:\s+Maj)?)(?:\s+[A-Z][a-z]+)*)',
-        text,
-        re.IGNORECASE
-    )
-    if led_match:
-        return led_match.group(1).strip()
+    leaders = []
 
-    # 2️⃣ Chaired by
-    chaired_match = re.search(
-        r'chaired by\s+(SS\s+(?:Lt|Maj|Capt|Col|Gen|Sgt(?:\s+Maj)?)(?:\s+[A-Z][a-z]+)*)',
-        text,
-        re.IGNORECASE
-    )
-    if chaired_match:
-        return chaired_match.group(1).strip()
+    named = re.findall(r'named\s+([A-Z]{1,3}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)', text)
+    leaders.extend(named)
 
-    # 3️⃣ Headed by
-    headed_match = re.search(
-        r'headed by\s+(SS\s+(?:Lt|Maj|Capt|Col|Gen|Sgt(?:\s+Maj)?)(?:\s+[A-Z][a-z]+)*)',
-        text,
-        re.IGNORECASE
-    )
-    if headed_match:
-        return headed_match.group(1).strip()
+    led_by = re.findall(r'led by\s+([A-Z]{1,3}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)', text)
+    leaders.extend(led_by)
 
-    # 4️⃣ Named pattern (MS Karabi Hati type)
-    named_match = re.search(
-        r'named\s+([A-Z]{1,3}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
-        text
-    )
-    if named_match:
-        return named_match.group(1).strip()
+    rank_pattern = r'\bSS\s+(?:Lt|Maj|Capt|Col|Gen|Sgt(?:\s+Maj)?)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?'
+    rank_matches = re.findall(rank_pattern, text)
+    leaders.extend(rank_matches)
 
-    # 5️⃣ Fallback rank-based extraction (first occurrence only)
-    rank_match = re.search(
-        r'\bSS\s+(?:Lt|Maj|Capt|Col|Gen|Sgt(?:\s+Maj)?)(?:\s+[A-Z][a-z]+)*',
-        text
-    )
-    if rank_match:
-        return rank_match.group(0).strip()
+    seen = set()
+    final = []
+    for l in leaders:
+        if l not in seen:
+            final.append(l)
+            seen.add(l)
 
-    return None
-# =========================================================
-# ADVANCED CADRE PRIORITIZATION
-# =========================================================
+    return ", ".join(final) if final else None
+
+
+# =====================================================
+# CADRE EXTRACTION
+# =====================================================
 
 def extract_cadre_numbers(text):
-    text_lower = text.lower()
 
-    strengths = []
+    match = re.search(r'gp\s+of\s+(\d+)\s*[/\-]\s*(\d+)\s*cadres', text, re.IGNORECASE)
+    if match:
+        return int(match.group(1)), int(match.group(2))
 
-    # Range (10-15)
-    range_matches = re.findall(r'(\d+)\s*[-/]\s*(\d+)\s*(?:x\s*)?(?:cadres?)', text_lower)
-    for m in range_matches:
-        strengths.append((int(m[0]), int(m[1])))
+    match = re.search(r'approx\s+(\d+)\s*x', text, re.IGNORECASE)
+    if match:
+        n = int(match.group(1))
+        return n, n
 
-    # Approx X
-    approx_matches = re.findall(r'approx\s*(\d+)\s*x', text_lower)
-    for m in approx_matches:
-        strengths.append((int(m), int(m)))
+    match = re.search(r'(\d+)\s*x\s*cadres', text, re.IGNORECASE)
+    if match:
+        n = int(match.group(1))
+        return n, n
 
-    # X cadres
-    x_matches = re.findall(r'(\d+)\s*x\s*(?:cadres?)', text_lower)
-    for m in x_matches:
-        strengths.append((int(m), int(m)))
-
-    # Normal
-    normal_matches = re.findall(r'(\d+)\s+(?:cadres?|militants?)', text_lower)
-    for m in normal_matches:
-        strengths.append((int(m), int(m)))
-
-    if not strengths:
-        return None, None
-    # choose strength with largest max value
-    best = max(strengths, key=lambda x: x[1])
-    return best
+    return None, None
 
 
-# =========================================================
-# EVENT CLASSIFICATION (HIERARCHICAL)
-# =========================================================
+# =====================================================
+# EVENT CLASSIFICATION
+# =====================================================
 
 def detect_event_type(text):
+
     t = text.lower()
 
-    for keyword, label in EVENT_PRIORITY:
-        if keyword in t:
-            return label
+    if "standoff firing" in t:
+        return "Standoff Firing"
+
+    if "ablaze" in t or "burn" in t:
+        return "Ablaze/ Conflict"
+
+    if "infilt" in t:
+        return "Infiltration"
+
+    if "mov of cadres" in t or "movement of cadres" in t:
+        return "Movement of Cadres"
+
+    if "presence of cadres" in t:
+        return "Presence of Cadres"
+
+    if "mtg" in t or "meeting" in t:
+        return "Meeting"
+
+    if "plg" in t:
+        return "Planning"
+
+    if "firing" in t or "attack" in t:
+        return "Firefight"
 
     return "IFC"
 
 
-# =========================================================
-# WEAPON NORMALIZATION
-# =========================================================
+# =====================================================
+# WEAPONS
+# =====================================================
 
 def extract_weapons(text):
-    t = text.lower()
-    found = set()
 
-    for key, val in WEAPON_MAP.items():
-        pattern = r'\b' + re.escape(key) + r'\b'
-        if re.search(pattern, t):
-            found.add(val)
+    weapons = []
 
-    return ", ".join(sorted(found)) if found else None
+    if "rpg" in text.lower():
+        weapons.append("RPG")
 
-# =========================================================
-# AMMUNITION
-# =========================================================
+    if "gren" in text.lower():
+        weapons.append("GRENADE")
+
+    if "sa fire" in text.lower():
+        weapons.append("SA")
+
+    if "ied" in text.lower():
+        weapons.append("IED")
+
+    return ", ".join(sorted(set(weapons))) if weapons else None
+
 
 def extract_ammunition(text):
-    matches = re.findall(r'(\d+)\s*x\s*(?:rpg\s*)?(?:rounds?|rds)', text.lower())
-    if matches:
-        return str(max(int(m) for m in matches))
+
+    match = re.search(r'(\d+)\s*x\s*(?:rpg\s*)?(?:rounds?|rds)', text.lower())
+    if match:
+        return match.group(1)
+
     return None
 
 
-# =========================================================
-# APPLY MAPPING (MASTER ENGINE)
-# =========================================================
+# =====================================================
+# MASTER APPLY
+# =====================================================
 
-def apply_mapping(data: dict, body_text: str) -> dict:
+def apply_mapping(data, body_text):
 
-    # Source parsing
+    # Heading + Summary
+    heading, summary = extract_heading_and_summary(body_text)
+    data["heading"] = heading
+    data["input_summary"] = summary
+
     agency, aor, unit = extract_source_fields(body_text)
 
     if agency:
@@ -300,21 +282,19 @@ def apply_mapping(data: dict, body_text: str) -> dict:
     if unit:
         data["unit"] = unit
 
-    # Structural extraction
     data["fmn"] = extract_fmn(body_text)
 
     gp = extract_gp(body_text)
     if gp:
         data["gp"] = gp
 
-    data["state"] = extract_state(body_text)
+    state = extract_state(body_text)
+    if state:
+        data["state"] = state
+        data["country"] = STATE_TO_COUNTRY.get(state)
+
     data["district"] = extract_district(body_text)
-    data["gen_area"] = extract_gen_area(body_text)
 
-    if data.get("state") in STATE_TO_COUNTRY:
-        data["country"] = STATE_TO_COUNTRY[data["state"]]
-
-    # Tactical extraction
     min_c, max_c = extract_cadre_numbers(body_text)
     data["cadres_min"] = min_c
     data["cadres_max"] = max_c

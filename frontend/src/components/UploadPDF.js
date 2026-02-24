@@ -25,7 +25,7 @@ function UploadPDF() {
 
       if (res.data.status === "success") {
         setStatus("✅ File processed successfully.");
-        setRecords(`📁 Saved as: ${res.data.excel}`);
+        setRecords(`📁 Saved as: ${res.data.excel} in output folder.`);
       } else {
         setStatus(`❌ ${res.data.message || "Error processing PDF."}`);
       }
