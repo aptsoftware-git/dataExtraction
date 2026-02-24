@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
 import os
 import re
 from datetime import datetime
@@ -13,7 +14,7 @@ from app.services.mapping_rules import apply_mapping
 from app.services.excel_writer import write_excel
 from app.utils.logger import log
 
-upload_bp = Blueprint("upload", __name__)
+router = APIRouter()
 
 
 # =====================================================
@@ -42,18 +43,20 @@ def extract_date_anywhere(text):
     return None
 
 
-@upload_bp.route("/upload", methods=["POST"])
-def upload():
+@router.post("/upload")
+async def upload(file: UploadFile = File(...)):
 
     try:
-
-        file = request.files["file"]
 
         os.makedirs("uploads", exist_ok=True)
         os.makedirs("output", exist_ok=True)
 
         pdf_path = f"uploads/{file.filename}"
-        file.save(pdf_path)
+        
+        # Save uploaded file
+        with open(pdf_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
 
         log("UPLOAD", file.filename)
 
@@ -186,15 +189,18 @@ def upload():
 
         final_excel = write_excel(rows, pdf_path)
 
-        return jsonify({
+        return {
             "status": "success",
             "records": len(rows),
             "excel": final_excel
-        }), 200
+        }
 
     except Exception as e:
         log("ERROR", str(e))
-        return jsonify({
-            "status": "error",
-            "message": "Processing failed"
-        }), 500
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Processing failed"
+            }
+        )

@@ -1,9 +1,20 @@
-flask
-flask_cors
+# FastAPI and Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# PDF Processing
 pdfplumber
 pymupdf
 markdownify
+
+# Data Processing
 pandas
 openpyxl
+
+# HTTP and Utilities
 requests
 beautifulsoup4
+python-dotenv
+python-multipart

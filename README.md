@@ -31,7 +31,7 @@ It combines rule-based extraction with contextual enrichment to ensure consisten
 ```
 project_Jetly/
 │
-├── backend/        # Flask backend (extraction engine)
+├── backend/        # FastAPI backend (extraction engine)
 ├── frontend/       # React frontend
 ├── input files/    # Sample PDFs
 ├── output/         # Generated Excel files
@@ -76,13 +76,25 @@ pip install -r requirements.txt
 ### 4️⃣ Run Backend
 
 ```bash
-python run.py 
+uvicorn run:app --host 0.0.0.0 --port 5000
+```
+
+For development with auto-reload:
+
+```bash
+uvicorn run:app --host 0.0.0.0 --port 5000 --reload
 ```
 
 Backend runs at:
 
 ```
 http://127.0.0.1:5000
+```
+
+API Documentation available at:
+
+```
+http://127.0.0.1:5000/docs
 ```
 
 ### 5️⃣ Run Frontend

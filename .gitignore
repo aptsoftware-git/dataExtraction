@@ -27,6 +27,6 @@ logs/
 # =========================
 # Environment Files
 # =========================
-.env
-.env.*
+# .env
+# .env.*
 frontend/package-lock.json
