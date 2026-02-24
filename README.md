@@ -76,7 +76,7 @@ pip install -r requirements.txt
 ### 4️⃣ Run Backend
 
 ```bash
-python -m backend.run
+python run.py 
 ```
 
 Backend runs at:
