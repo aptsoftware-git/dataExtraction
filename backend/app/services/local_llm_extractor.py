@@ -8,8 +8,8 @@ from app.utils.logger import log
 # Load environment variables
 load_dotenv()
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-oss:120b")
+OLLAMA_URL = os.getenv("OLLAMA_URL")
+LLM_MODEL = os.getenv("LLM_MODEL")
 
 
 SYSTEM_PROMPT = """
