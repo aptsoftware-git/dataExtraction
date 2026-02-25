@@ -1,0 +1,65 @@
+Based on the data you provided, specifically the highly detailed "Compiled DIU 2025 (2)" sheet which contains the most comprehensive schema, here is the full list of 19 columns along with their domain-specific military intelligence details.
+1. Date
+
+The date the intelligence input was received or the event occurred. This is crucial for temporal analysis and establishing timelines of insurgent activity.
+2. FMN (Formation)
+
+Refers to the higher-level military organizational structure (e.g., Corps, Division, or Brigade) responsible for the geographic area.
+3. AOR (LOWER FMN)
+
+Area of Responsibility (Lower Formation): Specifies the smaller tactical formation (like a Sector or specific Brigade) that monitors this specific zone.
+4. Unit
+
+The specific battalion or regiment on the ground (e.g., 4 AR for 4th Assam Rifles) that collected the data or is responsible for the location mentioned.
+5. AGENCY
+
+The source of the information. In your logs, these include SIB (Subsidiary Intelligence Bureau), PHQ (Police Headquarters), ARFIU (Assam Rifles Field Intelligence Unit), and various EW (Electronic Warfare) Bns.
+6. COUNTRY
+
+Indicates if the activity is domestic (India) or cross-border. Your logs frequently mention Myanmar, tracking safe havens and training camps across the International Maritime Boundary (IMB).
+7. STATE
+
+The Indian state involved (e.g., Nagaland, Arunachal Pradesh/ALP, Manipur). This helps in coordinating with state-level police and administration.
+8. DIST (District)
+
+The specific administrative district (e.g., Changlang, Tuensang, Kohima). Military operations are often planned based on district-level intelligence.
+9. GEN A (General Area)
+
+The broad vicinity or landmark where an event is taking place, used when exact coordinates might not be immediately available.
+10. GP (Group)
+
+The specific insurgent or militant group being tracked. Examples from your data include NSCN(IM), NSCN(K-YA), and NNC/FGN.
+11. Heading
+
+A brief subject line or "Title" for the report (e.g., Movement of Cadres, Extortion Demand, or Defection).
+12. Input
+
+The raw intelligence text or descriptive narrative. This contains the "Who, What, Where, and Why" of the report.
+13. Coordinates
+
+The precise Latitude and Longitude or Grid Reference of the activity, used for tactical mapping and "plotting" on a GIS like Geoserver.
+14. Defection To / Firefight / IFC With
+
+Tracks specific interactions between groups.
+
+    Defection: When a cadre leaves one group for another.
+
+    Firefight: Combat with Security Forces.
+
+    IFC: Inter-Factional Clash between rival militant groups.
+
+15. No of Cadres (Min)
+
+The lowest estimated number of militants involved in the reported activity.
+16. No of Cadres (Max)
+
+The highest estimated number of militants. The gap between Min and Max helps intelligence officers understand the level of uncertainty in the report.
+17. Ldr (Leader)
+
+The name or alias (SS - Self Styled) of the commander or high-ranking cadre leading the group (e.g., SS Maj Konyak).
+18. Wpns (Weapons)
+
+Inventory of arms involved, such as AK-series rifles, pistols, or grenades recovered or seen with the cadres.
+19. Amn (Ammunition)
+
+Details regarding the quantity and caliber of ammunition associated with the report or recovery.

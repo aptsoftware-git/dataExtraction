@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 from typing import List
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 from app.services.pdf_extractor import (
     extract_table_rows,
@@ -13,8 +14,13 @@ from app.services.pdf_extractor import (
 )
 
 from app.services.mapping_rules import apply_mapping
+from app.services.local_llm_extractor import extract_semantic_fields, extract_multiple_blocks_parallel, LLM_SKIP_MAPPING
 from app.services.excel_writer import write_excel
 from app.utils.logger import log
+
+# Load environment variables
+load_dotenv()
+EXTRACTION_MODE = os.getenv("EXTRACTION_MODE", "RULE-BASED")
 
 router = APIRouter()
 
@@ -61,6 +67,7 @@ async def upload(file: UploadFile = File(...)):
             buffer.write(content)
 
         log("UPLOAD", file.filename)
+        log("CONFIG", f"Extraction mode: {EXTRACTION_MODE}")
 
         rows = []
 
@@ -73,6 +80,7 @@ async def upload(file: UploadFile = File(...)):
         if table_rows and len(table_rows) > 1:
 
             log("MODE", "TABLE")
+            log("INFO", "Using rule-based extraction (TABLE MODE doesn't use LLM)")
 
             header = [h.strip().lower() if h else "" for h in table_rows[0]]
 
@@ -148,46 +156,92 @@ async def upload(file: UploadFile = File(...)):
 
         else:
 
-            log("MODE", "NARRATIVE")
+            log("MODE", f"NARRATIVE ({EXTRACTION_MODE})")
 
             full_text = extract_text_from_pdf(pdf_path)
             blocks = split_narrative_blocks(full_text)
+            
+            # Clean all blocks first
+            clean_blocks = [re.sub(r'\s+', ' ', block).strip() for block in blocks]
+            
+            # LLM-BASED extraction with parallel processing
+            if EXTRACTION_MODE == "LLM-BASED":
+                log("EXTRACTION", f"Using parallel LLM-based extraction for {len(clean_blocks)} blocks")
+                
+                # Process all blocks in parallel (uses LLM_MAX_WORKERS from .env)
+                llm_results = extract_multiple_blocks_parallel(clean_blocks)
+                
+                # Create data structures with LLM results
+                for idx, clean_text in enumerate(clean_blocks):
+                    data = {
+                        "date": extract_date_anywhere(clean_text),
+                        "fmn": None,
+                        "aor_lower_fmn": None,
+                        "unit": None,
+                        "agency": None,
+                        "country": None,
+                        "state": None,
+                        "district": None,
+                        "gen_area": None,
+                        "gp": None,
+                        "heading": None,
+                        "input_summary": clean_text,
+                        "coordinates": None,
+                        "engagement_type_reasoned": None,
+                        "cadres_min": None,
+                        "cadres_max": None,
+                        "leader": None,
+                        "weapons": None,
+                        "ammunition": None
+                    }
+                    
+                    # Update with LLM extracted fields
+                    llm_data = llm_results[idx]
+                    for key, value in llm_data.items():
+                        if key in data and value:
+                            data[key] = value
+                    
+                    # Apply mapping rules only if LLM_SKIP_MAPPING is false
+                    if not LLM_SKIP_MAPPING:
+                        data = apply_mapping(data, clean_text)
+                    
+                    rows.append(data)
+            
+            # RULE-BASED extraction (sequential - fast enough)
+            else:
+                log("EXTRACTION", f"Using rule-based extraction for {len(clean_blocks)} blocks")
+                
+                for clean_text in clean_blocks:
+                    data = {
+                        "date": extract_date_anywhere(clean_text),
+                        "fmn": None,
+                        "aor_lower_fmn": None,
+                        "unit": None,
+                        "agency": None,
+                        "country": None,
+                        "state": None,
+                        "district": None,
+                        "gen_area": None,
+                        "gp": None,
+                        "heading": None,
+                        "input_summary": clean_text,
+                        "coordinates": None,
+                        "engagement_type_reasoned": None,
+                        "cadres_min": None,
+                        "cadres_max": None,
+                        "leader": None,
+                        "weapons": None,
+                        "ammunition": None
+                    }
+                    
+                    heading_match = re.match(r'^([^\.]+)\.', clean_text)
+                    if heading_match:
+                        data["heading"] = heading_match.group(1).strip()
+                    else:
+                        data["heading"] = clean_text[:100]
 
-            for block in blocks:
-
-                clean_text = re.sub(r'\s+', ' ', block).strip()
-
-                data = {
-                    "date": extract_date_anywhere(clean_text),
-                    "fmn": None,
-                    "aor_lower_fmn": None,
-                    "unit": None,
-                    "agency": None,
-                    "country": None,
-                    "state": None,
-                    "district": None,
-                    "gen_area": None,
-                    "gp": None,
-                    "heading": None,
-                    "input_summary": clean_text,
-                    "coordinates": None,
-                    "engagement_type_reasoned": None,
-                    "cadres_min": None,
-                    "cadres_max": None,
-                    "leader": None,
-                    "weapons": None,
-                    "ammunition": None
-                }
-
-                heading_match = re.match(r'^([^\.]+)\.', clean_text)
-                if heading_match:
-                    data["heading"] = heading_match.group(1).strip()
-                else:
-                    data["heading"] = clean_text[:100]
-
-                data = apply_mapping(data, clean_text)
-
-                rows.append(data)
+                    data = apply_mapping(data, clean_text)
+                    rows.append(data)
 
         # Store extracted data (no automatic Excel generation)
         response_data = {
