@@ -2,6 +2,8 @@ import os
 import tempfile
 from dotenv import load_dotenv
 
+
+
 # ==========================================
 # Environment Setup
 # ==========================================
@@ -9,6 +11,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SAVE_DEBUG_MD = os.getenv("SAVE_DEBUG_MD", "false").lower() == "true"
+
+# Force Camelot to use system temp directory
+os.environ["TMPDIR"] = tempfile.gettempdir()
+os.environ["TEMP"] = tempfile.gettempdir()
+os.environ["TMP"] = tempfile.gettempdir()
 
 # Force Camelot temp files to use project folder (fix Windows locking issue)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
