@@ -30,3 +30,8 @@ logs/
 # .env
 # .env.*
 frontend/package-lock.json
+
+
+
+temp_camelot/
+.env

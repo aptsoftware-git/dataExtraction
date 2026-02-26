@@ -5,6 +5,8 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 
 # PDF Processing
+camelot-py[cv]
+opencv-python
 pdfplumber
 pymupdf
 markdownify
