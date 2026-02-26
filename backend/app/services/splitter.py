@@ -3,22 +3,19 @@ from app.utils.logger import log
 
 
 ROW_PATTERN = re.compile(
-    r"(?:^|\n)\s*(\d{1,2})\.\s",  # 1. 2. 3. ...
+    r"(?:^|\n)\s*(\d{1,2})\.\s",
     re.MULTILINE
 )
 
 
 def split_records(text: str) -> list[str]:
     """
-    Splits Army intelligence table PDFs into records
-    using S/No row anchors (1., 2., 3., ...)
+    Split Markdown into intelligence records.
     """
 
-    log("SPLIT", "Starting record splitting")
+    log("SPLIT", "Splitting markdown")
 
-    # Clean text slightly
-    clean = re.sub(r"[ \t]+", " ", text)
-    clean = re.sub(r"\n{2,}", "\n", clean)
+    clean = re.sub(r"\n{2,}", "\n", text)
 
     matches = list(ROW_PATTERN.finditer(clean))
 
@@ -34,22 +31,9 @@ def split_records(text: str) -> list[str]:
 
         record = clean[start:end].strip()
 
-        # ignore junk
-        if len(record) > 80:
+        if len(record) > 50:
             records.append(record)
 
     log("SPLIT", f"Detected {len(records)} records")
+
     return records
-
-
-def split_header_and_body(record: str):
-    """
-    Splits a single intelligence record into:
-    - header: first logical line (table row)
-    - body: remaining narrative inputs
-    """
-    lines = [l.strip() for l in record.split("\n") if l.strip()]
-    header = lines[0]
-    body = "\n".join(lines[1:]) if len(lines) > 1 else ""
-    return header, body
-
