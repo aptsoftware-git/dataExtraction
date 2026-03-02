@@ -1,8 +1,9 @@
 import os
-import tempfile
 from dotenv import load_dotenv
-
-
+import pdfplumber
+import camelot
+from markdownify import markdownify as md
+from app.utils.logger import log
 
 # ==========================================
 # Environment Setup
@@ -13,29 +14,16 @@ load_dotenv()
 SAVE_DEBUG_MD = os.getenv("SAVE_DEBUG_MD", "false").lower() == "true"
 
 
-import pdfplumber
-import camelot
-from markdownify import markdownify as md
-from app.utils.logger import log
-
-
 # ==========================================
 # Detect PDF Type
 # ==========================================
 
 def detect_pdf_type(pdf_path: str) -> str:
-    """
-    Detect if PDF is table-based or narrative.
-    Uses Camelot detection first.
-    """
-
     try:
         tables = camelot.read_pdf(pdf_path, pages="1", flavor="lattice")
-
         if tables and tables.n > 0:
             log("DETECT", "Table-based PDF detected (Camelot)")
             return "table"
-
     except Exception as e:
         log("DETECT", f"Camelot detection failed: {str(e)}")
 
@@ -44,10 +32,44 @@ def detect_pdf_type(pdf_path: str) -> str:
 
 
 # ==========================================
+# UNIVERSAL RAW HTML SAVER
+# ==========================================
+
+def save_raw_html(pdf_path: str):
+    """
+    Saves raw HTML version of extracted PDF text
+    for BOTH table and narrative PDFs.
+    """
+
+    if not SAVE_DEBUG_MD:
+        return
+
+    os.makedirs("debug_output", exist_ok=True)
+    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    html_path = os.path.join("debug_output", f"{base_name}_raw.html")
+
+    html_content = ""
+
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if text:
+                html_content += f"<p>{text}</p>\n"
+
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    log("DEBUG", f"Saved RAW HTML → {html_path}")
+
+
+# ==========================================
 # TABLE PIPELINE
 # ==========================================
 
 def extract_table_rows_as_markdown(pdf_path: str) -> list:
+
+    # Always save raw HTML first
+    save_raw_html(pdf_path)
 
     rows_markdown = []
 
@@ -110,18 +132,17 @@ def extract_table_rows_as_markdown(pdf_path: str) -> list:
                         if len(row_md.strip()) > 30:
                             rows_markdown.append(row_md)
 
-    # Save debug markdown only if enabled in .env
+    # Save markdown for table
     if SAVE_DEBUG_MD:
-        os.makedirs("debug_md", exist_ok=True)
-
+        os.makedirs("debug_output", exist_ok=True)
         base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-        md_path = os.path.join("debug_md", f"{base_name}_table.md")
+        md_path = os.path.join("debug_output", f"{base_name}_table.md")
 
         with open(md_path, "w", encoding="utf-8") as f:
             for row in rows_markdown:
                 f.write(row + "\n\n---\n\n")
 
-        log("DEBUG", f"Table markdown saved → {md_path}")
+        log("DEBUG", f"Saved Table Markdown → {md_path}")
 
     return rows_markdown
 
@@ -131,6 +152,9 @@ def extract_table_rows_as_markdown(pdf_path: str) -> list:
 # ==========================================
 
 def extract_narrative_markdown(pdf_path: str) -> str:
+
+    # Always save raw HTML first
+    save_raw_html(pdf_path)
 
     html_content = ""
 
@@ -147,14 +171,14 @@ def extract_narrative_markdown(pdf_path: str) -> str:
     markdown = md(html_content).strip()
 
     if SAVE_DEBUG_MD:
-        os.makedirs("debug_md", exist_ok=True)
+        os.makedirs("debug_output", exist_ok=True)
 
         base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-        md_path = os.path.join("debug_md", f"{base_name}_narrative.md")
+        md_path = os.path.join("debug_output", f"{base_name}_narrative.md")
 
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(markdown)
 
-        log("DEBUG", f"Narrative markdown saved → {md_path}")
+        log("DEBUG", f"Saved Narrative Markdown → {md_path}")
 
     return markdown
